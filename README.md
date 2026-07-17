@@ -1,5 +1,6 @@
 # JoinFS → EuroScope Bridge
-![JoinFS-EuroScope-bridge icon](docs\JoinFS-EuroScope-bridge-icon.svg)
+![JoinFS-EuroScope-bridge icon](https://raw.githubusercontent.com/joeherwig/joinfs-euroscope-bridge/refs/heads/main/docs/JoinFS-EuroScope-bridge-icon.svg)
+
 Shows live [JoinFS](https://joinfs.net/) traffic in [EuroScope](https://www.euroscope.hu/) as real, interactive aircraft — selectable, tag-clickable, and able to receive text messages — not just symbols drawn on the screen.
 
 It works by connecting to JoinFS's live websocket feed and re-serving that traffic to EuroScope over a local network connection, the same way EuroScope normally receives traffic from an ATC network. Aircraft positions are forwarded as soon as JoinFS reports them (no artificial delay), so the picture stays smooth and current.
