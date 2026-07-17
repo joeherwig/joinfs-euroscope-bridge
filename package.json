@@ -1,0 +1,25 @@
+{
+  "name": "joinfs-euroscope-bridge",
+  "version": "0.1.0",
+  "description": "Bridges live JoinFS traffic into EuroScope as real, interactive aircraft.",
+  "private": true,
+  "license": "CC-BY-NC-SA-4.0",
+  "type": "commonjs",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "build:icon": "node scripts/generate-icon.js",
+    "build:exe": "node scripts/build-exe.js",
+    "build:release": "powershell -ExecutionPolicy Bypass -File scripts/build-release.ps1"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1",
+    "marked": "^18.0.6",
+    "postject": "^1.0.0-alpha.6",
+    "rcedit": "^4.0.1",
+    "sharp": "^0.33.5"
+  }
+}
