@@ -5,6 +5,13 @@ const EventEmitter = require('events');
 const DEFAULT_STALE_AFTER_MS = 20000;
 const DEFAULT_SWEEP_INTERVAL_MS = 5000;
 
+// Keys the store by a normalized callsign so incidental case/whitespace
+// differences between what JoinFS reports and what EuroScope queries by
+// don't cause a lookup to miss silently.
+function normalizeCallsign(callsign) {
+  return callsign.trim().toUpperCase();
+}
+
 // Holds the latest known state of every aircraft reported by JoinFS.
 //
 // JoinFS's websocket feed can push a partial aircraft list per message (not
@@ -28,7 +35,7 @@ class AircraftStore extends EventEmitter {
   }
 
   get(callsign) {
-    const entry = this.aircraft.get(callsign);
+    const entry = this.aircraft.get(normalizeCallsign(callsign));
     return entry && entry.data;
   }
 
@@ -41,8 +48,9 @@ class AircraftStore extends EventEmitter {
       if (!ac || !ac.callsign) {
         continue;
       }
-      const existing = this.aircraft.get(ac.callsign);
-      this.aircraft.set(ac.callsign, { data: ac, lastSeen: now });
+      const key = normalizeCallsign(ac.callsign);
+      const existing = this.aircraft.get(key);
+      this.aircraft.set(key, { data: ac, lastSeen: now });
       if (existing) {
         updated.push(ac);
       } else {

@@ -155,6 +155,8 @@ class FsdServer {
       const aircraft = this.aircraftStore.get(targetCallsign);
       if (aircraft) {
         conn.send(protocol.buildFlightPlan(aircraft));
+      } else {
+        this.logger.warn(`Flight plan requested for unknown callsign: ${targetCallsign}`);
       }
     }
     // Other queries (CAPS, RN, ATIS, ...) are not required for basic
