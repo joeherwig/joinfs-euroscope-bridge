@@ -27,6 +27,9 @@ Start from `config.example.json` if you ever need a clean template — `config.j
 | `joinfsAuthHeaderName` / `joinfsAuthHeaderValue` | Optional HTTP header sent when connecting to JoinFS, if your feed requires authentication. Leave both blank if not needed. |
 | `fsdListenHost` | Address the bridge listens on for EuroScope. Leave as `127.0.0.1` unless you specifically want other machines to connect. |
 | `fsdListenPort` | Port the bridge listens on. Defaults to `6809`, which is also EuroScope's default when no port is specified. |
+| `stationLogging` | Optional, default `false`. When `true`, the ATC stations EuroScope logs in (callsign, frequency, facility), their ATIS, every raw FSD line and the TeamSpeak webhook payloads are written to the normal `joinfs-euroscope-bridge.log` (`[STATION]` lines). |
+| `tsapiUrl` | Optional. If set (e.g. `http://tsapi:8081/station`), the bridge sends `PUT` webhooks `{"station","frequency","online","atis_text"}` to the TeamSpeak API whenever a station comes online, changes frequency/ATIS, or goes offline. Empty = no webhook. |
+| `tsapiAuthHeaderName` / `tsapiAuthHeaderValue` / `tsapiTimeoutMs` | Optional auth header for the webhook and its timeout (default 5000 ms). |
 | `updateIntervalMs` | How often JoinFS pushes updates, for reference only — not currently used to throttle anything. |
 
 The bridge always reads `config.json` from the same folder as the `.exe` — edit it and just restart the `.exe`, no rebuild needed.

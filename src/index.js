@@ -5,6 +5,8 @@ const { createLogger } = require('./logger');
 const { AircraftStore } = require('./aircraftStore');
 const { JoinFsClient } = require('./joinfsClient');
 const { FsdServer } = require('./fsdServer');
+const { TsapiClient } = require('./tsapiClient');
+const { StationTracker } = require('./stationTracker');
 const { configureConsoleWindow } = require('./windowControl');
 
 const CONSOLE_TITLE = 'JoinFS-EuroScope Bridge';
@@ -20,7 +22,7 @@ function main() {
     return;
   }
 
-  const logger = createLogger(config.baseDir);
+  const logger = createLogger(config.baseDir, { stationLogging: config.stationLogging === true });
   logger.info('joinfs-euroscope-bridge starting...');
   logger.info(`Using config: ${config.configPath}`);
 
@@ -34,11 +36,29 @@ function main() {
     logger,
   });
 
+  // Station tracking is only active when something consumes it: the TSAPI
+  // webhook (tsapiUrl set) or the discovery log (stationLogging).
+  let tsapiClient = null;
+  if (config.tsapiUrl) {
+    tsapiClient = new TsapiClient({
+      url: config.tsapiUrl,
+      authHeaderName: config.tsapiAuthHeaderName,
+      authHeaderValue: config.tsapiAuthHeaderValue,
+      timeoutMs: config.tsapiTimeoutMs,
+      logger,
+    });
+    logger.info(`TSAPI webhook enabled: ${config.tsapiUrl}`);
+  }
+  const stationTracker = tsapiClient || config.stationLogging === true
+    ? new StationTracker({ logger, tsapiClient })
+    : null;
+
   const fsdServer = new FsdServer({
     host: config.fsdListenHost,
     port: config.fsdListenPort,
     aircraftStore,
     logger,
+    stationTracker,
   });
 
   fsdServer.start();
@@ -54,7 +74,10 @@ function main() {
     joinfsClient.stop();
     fsdServer.stop();
     aircraftStore.stop();
-    process.exit(0);
+    // Best-effort "offline" webhooks, but never hang the shutdown.
+    const done = stationTracker ? stationTracker.shutdown() : Promise.resolve();
+    Promise.race([done, new Promise((resolve) => setTimeout(resolve, 2000))])
+      .finally(() => process.exit(0));
   }
 
   process.on('SIGINT', shutdown);

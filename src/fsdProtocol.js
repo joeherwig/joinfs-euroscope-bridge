@@ -154,7 +154,56 @@ function parseLine(line) {
   return { type: 'UNKNOWN', fields };
 }
 
+const FACILITY_NAMES = { 0: 'OBS', 1: 'FSS', 2: 'DEL', 3: 'GND', 4: 'TWR', 5: 'APP', 6: 'CTR' };
+
+// %(callsign):(freqs, '&'-separated, 28550 = 128.550):(facility):(visRange):(rating):(lat):(lon):0
+function parseAtcPosition(fields) {
+  const callsign = fields[0].slice(1);
+  const frequencies = (fields[1] || '')
+    .split('&')
+    .filter((f) => /^\d{5}$/.test(f))
+    .map((f) => ((100000 + Number(f)) / 1000).toFixed(3))
+    .filter((f) => f !== '199.998');
+  const facilityType = Number(fields[2]);
+  return {
+    callsign,
+    frequencies,
+    facilityType,
+    facilityName: FACILITY_NAMES[facilityType] || String(fields[2]),
+    visRange: Number(fields[3]),
+    rating: Number(fields[4]),
+    lat: Number(fields[5]),
+    lon: Number(fields[6]),
+  };
+}
+
+// Recognises ATIS data in the shapes described by the protocol doc:
+//   $CR<atis>:<to>:ATIS:<A|T|Z|V|E>:<value>
+//   #TM<atis>:<to>:ATIS <A|T|Z|V|E> <value>
+//   $CQ<atis>:@94835:NEWATIS:ATIS B:<wind/pressure>   /  :NEWINFO:B
+// Returns { source, callsign, kind, value } or null.
+function parseAtis(packet) {
+  const f = packet.fields;
+  const callsign = f[0].slice(3);
+  if (packet.type === 'CR' && f[2] === 'ATIS' && f[3]) {
+    return { source: 'CR', callsign, kind: f[3], value: f.slice(4).join(':') };
+  }
+  if (packet.type === 'TM' && /^ATIS [ATZVE](\s|$)/.test(f[2] || '')) {
+    const text = f.slice(2).join(':');
+    return { source: 'TM', callsign, kind: text[5], value: text.slice(7) };
+  }
+  if (packet.type === 'CQ' && f[2] === 'NEWINFO') {
+    return { source: 'CQ', callsign, kind: 'A', value: f[3] || '' };
+  }
+  if (packet.type === 'CQ' && f[2] === 'NEWATIS') {
+    return { source: 'CQ', callsign, kind: 'A', value: (f[3] || '').replace(/^ATIS\s+/, '') };
+  }
+  return null;
+}
+
 module.exports = {
+  parseAtcPosition,
+  parseAtis,
   buildPostLoginCapsExchange,
   buildMotd,
   buildAddPilot,

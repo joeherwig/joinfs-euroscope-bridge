@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-function createLogger(baseDir) {
+function createLogger(baseDir, { stationLogging = false } = {}) {
   const logFile = path.join(baseDir, 'joinfs-euroscope-bridge.log');
   let stream;
   try {
@@ -24,6 +24,13 @@ function createLogger(baseDir) {
     info: (message) => write('INFO', message),
     warn: (message) => write('WARN', message),
     error: (message) => write('ERROR', message),
+    // Discovery logging (raw FSD lines, station/ATIS state, TSAPI payloads).
+    // Off by default; when on it goes into the same single log file.
+    station: (message) => {
+      if (stationLogging) {
+        write('STATION', message);
+      }
+    },
   };
 }
 
