@@ -10,6 +10,11 @@ const DEFAULTS = {
   fsdListenHost: '127.0.0.1',
   fsdListenPort: 6809,
   updateIntervalMs: 1000,
+  stationLogging: false,
+  tsapiUrl: '',
+  tsapiAuthHeaderName: '',
+  tsapiAuthHeaderValue: '',
+  tsapiTimeoutMs: 5000,
 };
 
 function isRunningAsPackagedExe() {
