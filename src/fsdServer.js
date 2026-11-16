@@ -132,6 +132,8 @@ class FsdServer {
         break;
 
       case 'AA':
+        // #AA(callsign):SERVER:(real name):... - the name is the "nickname"
+        conn.nickname = (packet.fields[2] || '').trim() || packet.callsign;
         this._handleAtcLogin(conn, packet.callsign);
         break;
 

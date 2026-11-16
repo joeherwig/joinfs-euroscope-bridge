@@ -28,7 +28,7 @@ Start from `config.example.json` if you ever need a clean template — `config.j
 | `fsdListenHost` | Address the bridge listens on for EuroScope. Leave as `127.0.0.1` unless you specifically want other machines to connect. |
 | `fsdListenPort` | Port the bridge listens on. Defaults to `6809`, which is also EuroScope's default when no port is specified. |
 | `stationLogging` | Optional, default `false`. When `true`, the ATC stations EuroScope logs in (callsign, frequency, facility), their ATIS, every raw FSD line and the TeamSpeak webhook payloads are written to the normal `joinfs-euroscope-bridge.log` (`[STATION]` lines). |
-| `tsapiUrl` | Optional. If set (e.g. `http://tsapi:8081/station`), the bridge sends `PUT` webhooks `{"station","frequency","online","atis_text"}` to the TeamSpeak API whenever a station comes online, changes frequency/ATIS, or goes offline. Empty = no webhook. |
+| `tsapiUrl` | Optional. If set (e.g. `http://tsapi:8081/atcstation`), the bridge sends `PUT` webhooks to the TeamSpeak API whenever a station (including an ATIS connection) comes online, changes frequency/ATIS text, or goes offline. A station is reported like a COM update: `{"comsupdate":[{"callsign":"EDDS_ATIS","nickname":"Joe","com1":"123.130","text":"<merged ATIS text>","online":true}]}` (`online` is `true`, or `false` when the station disconnects; `text` only for an ATIS). Empty = no webhook. |
 | `tsapiAuthHeaderName` / `tsapiAuthHeaderValue` / `tsapiTimeoutMs` | Optional auth header for the webhook and its timeout (default 5000 ms). |
 | `updateIntervalMs` | How often JoinFS pushes updates, for reference only — not currently used to throttle anything. |
 
@@ -55,6 +55,21 @@ JoinFS traffic should start appearing on the radar within a few seconds, fully s
 - The `.exe`'s own console window logs connection status for both sides (JoinFS and EuroScope) and writes the same log to `joinfs-euroscope-bridge.log` next to it.
 - EuroScope itself doesn't keep a log file — check the message/chat area at the bottom of its radar screen, or **Settings → System messages...**, for anything it reports about the connection.
 
+## ATC stations and ATIS → TeamSpeak (optional)
+
+Every ATC connection EuroScope opens to the bridge is a *station*: its callsign (e.g. `EDDS_TWR`), the frequency it has tuned, and — for an ATIS connection (`EDDS_ATIS`) — the ATIS text from EuroScope's "ATIS connection setup" dialog. A station is just a COM1 tuned to a frequency, so it is reported in the same shape as a pilot's COM update. With `tsapiUrl` set, the bridge sends:
+
+```
+PUT <tsapiUrl>
+{"comsupdate":[{"callsign":"EDDS_ATIS","nickname":"Joe","com1":"123.130",
+  "text":"STUTTGART INFORMATION B .. RWY 25 ..","online":true}]}
+```
+
+- `callsign` = station callsign (later the TeamSpeak channel name), `com1` = its primary frequency (later the channel topic), `text` = the ATIS text merged into one string (later the channel description; only present for an ATIS), `nickname` = the name entered in EuroScope.
+- Sent when a station appears, when its frequency or ATIS text changes, again every 5 minutes, and with `"online":false` (and no `text`) when the station disconnects or the bridge shuts down.
+- EuroScope only announces the ATIS *letter*; the bridge therefore asks the ATIS connection for its text (`$CQ…:ATIS`) on login, on every new letter and once a minute.
+- Without `tsapiUrl` nothing is sent. With `"stationLogging": true` the payloads (and every raw FSD line) are written to the normal log file as `[STATION]` lines, which is also a quick way to see what EuroScope reports.
+
 ## For developers
 
 Project layout:
@@ -67,6 +82,8 @@ src/
   aircraftStore.js      merges/tracks aircraft state, expires stale ones
   fsdServer.js           TCP server EuroScope connects to
   fsdProtocol.js         packet builders/parsers for the wire format
+  stationTracker.js      ATC stations/ATIS from EuroScope -> TSAPI comsupdate payloads
+  tsapiClient.js         PUT webhook to the TeamSpeak API (only if tsapiUrl is set)
   logger.js
 scripts/
   build-exe.js          bundles + packages a standalone .exe (Node SEA)

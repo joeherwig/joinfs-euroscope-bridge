@@ -25,12 +25,12 @@ class TsapiClient {
       });
       const text = await res.text().catch(() => '');
       if (res.ok) {
-        this.logger.station(`TSAPI ${res.status} for ${payload.station}: ${text.slice(0, 300)}`);
+        this.logger.station(`TSAPI ${res.status} for ${payload.comsupdate[0].callsign}: ${text.slice(0, 300)}`);
       } else {
-        this.logger.warn(`TSAPI ${this.url} returned ${res.status} for ${payload.station}: ${text.slice(0, 300)}`);
+        this.logger.warn(`TSAPI ${this.url} returned ${res.status} for ${payload.comsupdate[0].callsign}: ${text.slice(0, 300)}`);
       }
     } catch (err) {
-      this.logger.warn(`TSAPI ${this.url} failed for ${payload.station}: ${err.message}`);
+      this.logger.warn(`TSAPI ${this.url} failed for ${payload.comsupdate[0].callsign}: ${err.message}`);
     }
   }
 }

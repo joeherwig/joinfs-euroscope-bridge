@@ -86,9 +86,10 @@ class StationTracker {
   onLogoff(conn, callsign) {
     for (const [name, st] of [...this.stations]) {
       if (st.conn === conn && (!callsign || name === callsign)) {
+        const payload = this._payload(name, false);
         this.stations.delete(name);
         this.atis.delete(name);
-        this._send({ station: name, online: false });
+        this._send(payload);
       }
     }
   }
@@ -96,8 +97,9 @@ class StationTracker {
   async shutdown() {
     clearInterval(this.reassertTimer);
     for (const name of [...this.stations.keys()]) {
+      const payload = this._payload(name, false);
       this.stations.delete(name);
-      this._send({ station: name, online: false });
+      this._send(payload);
     }
     await Promise.allSettled([...this.inflight]);
   }
@@ -111,16 +113,25 @@ class StationTracker {
     return a;
   }
 
-  _payload(callsign) {
+  // A station is just a COM1 tuned to a frequency, so it is reported in the
+  // same shape as a pilot's COM update (tsapi: { comsupdate: [ {...} ] }).
+  // Must be called before the station is removed (offline keeps its com1 so
+  // tsapi can find the channel).
+  _payload(callsign, online = true) {
     const st = this.stations.get(callsign);
-    const payload = { station: callsign, frequency: st.frequencies[0], online: true };
+    const entry = {
+      callsign,
+      nickname: st.conn.nickname || callsign,
+      com1: st.frequencies[0],
+    };
     const a = this.atis.get(callsign);
-    if (a && a.lines.length) {
-      // EuroScope may deliver the ATIS as several FSD text lines; the channel
-      // description gets them merged into one text.
-      payload.atis_text = a.lines.join(' ').replace(/\s+/g, ' ').trim();
+    if (online && a && a.lines.length) {
+      // EuroScope may deliver the ATIS as several FSD text lines; they are
+      // merged into one text (later the channel description).
+      entry.text = a.lines.join(' ').replace(/\s+/g, ' ').trim();
     }
-    return payload;
+    entry.online = online;
+    return { comsupdate: [entry] };
   }
 
   _reassert() {
