@@ -1,7 +1,28 @@
 'use strict';
 
+const { decodeMetarInText } = require('./metarDecoder');
+
 const REASSERT_INTERVAL_MS = 5 * 60 * 1000;
 const ATIS_DEBOUNCE_MS = 500;
+
+// Merges the FSD text lines of an ATIS into one string. EuroScope renders the
+// pause markers "[ ]" of its ATIS template as runs of spaces (3 inside a line,
+// 2 at a line end), so a run of 2+ whitespace characters - also across a line
+// break - is a pause and is written as " .. ". A single space is just a word gap.
+function mergeAtisLines(lines) {
+  let text = '';
+  for (const line of lines) {
+    if (text && !/\s$/.test(text) && !/^\s/.test(line)) {
+      text += ' ';
+    }
+    text += line;
+  }
+  const paused = text.replace(/\s{2,}/g, ' .. ').trim();
+  return decodeMetarInText(paused)
+    .replace(/(\.\.)(\s+\.\.)+/g, '$1') // pause next to an already literal ".."
+    .replace(/^[\s.]*?(?=[^\s.])/, '') // no leading pause
+    .trim();
+}
 
 // Turns EuroScope's ATC positions / ATIS packets into TSAPI `PUT /station`
 // payloads. Every connection EuroScope opens is its own station - including
@@ -128,7 +149,7 @@ class StationTracker {
     if (online && a && a.lines.length) {
       // EuroScope may deliver the ATIS as several FSD text lines; they are
       // merged into one text (later the channel description).
-      entry.text = a.lines.join(' ').replace(/\s+/g, ' ').trim();
+      entry.text = mergeAtisLines(a.lines);
     }
     entry.online = online;
     return { comsupdate: [entry] };
@@ -150,4 +171,4 @@ class StationTracker {
   }
 }
 
-module.exports = { StationTracker };
+module.exports = { StationTracker, mergeAtisLines };

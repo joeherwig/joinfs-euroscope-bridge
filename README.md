@@ -67,6 +67,8 @@ PUT <tsapiUrl>
 
 - `callsign` = station callsign (later the TeamSpeak channel name), `com1` = its primary frequency (later the channel topic), `text` = the ATIS text merged into one string (later the channel description; only present for an ATIS), `nickname` = the name entered in EuroScope.
 - Sent when a station appears, when its frequency or ATIS text changes, again every 5 minutes, and with `"online":false` (and no `text`) when the station disconnects or the bridge shuts down.
+- EuroScope renders the pause markers `[ ]` of an auto-generated ATIS as runs of spaces; the bridge writes every such pause as ` .. ` in `text`.
+- METAR groups inside the ATIS (e.g. `23004KT 180V280 9999 FEW041 BKN018 09/07 Q1007 NOSIG`) are decoded into words: `WIND 230 DEGREES 4 KNOTS .. WIND VARIABLE FROM 180 TO 280 DEGREES .. VISIBILITY MORE THAN 10 KILOMETERS .. CLOUDS FEW AT 4100 FEET .. BROKEN AT 1800 FEET .. TEMPERATURE 9 .. DEWPOINT 7 .. QNH 1007 HECTOPASCAL .. NO SIGNIFICANT CHANGE`. Supported: wind (incl. gusts, variable, calm), time `ddhhmmZ`, visibility (m / `9999` / SM), RVR, weather phenomena, clouds, vertical visibility, temperature/dewpoint, QNH/altimeter, `CAVOK`, `NOSIG`/`BECMG`/`TEMPO`. Ambiguous tokens (4-digit visibility, weather codes) are only decoded inside a METAR run that starts at a wind or time group, so ordinary numbers in the ATIS text stay untouched (see `src/metarDecoder.js`).
 - EuroScope only announces the ATIS *letter*; the bridge therefore asks the ATIS connection for its text (`$CQ…:ATIS`) on login, on every new letter and once a minute.
 - Without `tsapiUrl` nothing is sent. With `"stationLogging": true` the payloads (and every raw FSD line) are written to the normal log file as `[STATION]` lines, which is also a quick way to see what EuroScope reports.
 
@@ -82,6 +84,7 @@ src/
   aircraftStore.js      merges/tracks aircraft state, expires stale ones
   fsdServer.js           TCP server EuroScope connects to
   fsdProtocol.js         packet builders/parsers for the wire format
+  metarDecoder.js        METAR groups in ATIS text -> spoken words
   stationTracker.js      ATC stations/ATIS from EuroScope -> TSAPI comsupdate payloads
   tsapiClient.js         PUT webhook to the TeamSpeak API (only if tsapiUrl is set)
   logger.js
